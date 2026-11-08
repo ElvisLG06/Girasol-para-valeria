@@ -91,7 +91,7 @@
   </div>
 
 <script>
-  const TOTAL = 21;                       // impar → el último siempre es "Te ama"
+  const TOTAL = 10;                       // el último pétalo siempre es "Te ama"
   const FINAL = "Te amo mi vida hermosa! 💕";
   const NS = "http://www.w3.org/2000/svg";
   const petalsG = document.getElementById("petals");
@@ -121,7 +121,7 @@
     for (let i = 0; i < TOTAL; i++) {
       const ang = (360 / TOTAL) * i;
       const p = document.createElementNS(NS, "path");
-      p.setAttribute("d", "M200 200 C 178 160, 182 95, 200 70 C 218 95, 222 160, 200 200 Z");
+      p.setAttribute("d", "M200 200 C 155 165, 165 85, 200 62 C 235 85, 245 165, 200 200 Z");
       p.setAttribute("fill", "url(#petalGrad)");
       p.setAttribute("stroke", "#e09100");
       p.setAttribute("stroke-width", "1.2");
@@ -160,7 +160,7 @@
       celebrate();
       setTimeout(() => again.style.display = "block", 2500);
     } else {
-      const loves = removed % 2 === 1;
+      const loves = left % 2 === 0;   // cuenta hacia atrás para terminar en "Te ama"
       msg.innerHTML = loves ? `<span class="si">Te ama 💛</span>` : `<span class="no">No te ama…</span>`;
       counter.textContent = `${left} pétalo${left === 1 ? "" : "s"}`;
       hint.textContent = "Sigue tocando…";
