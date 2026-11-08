@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#ffe9a8">
+<title>Un girasol para Valeria 🌻</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: "Georgia", "Times New Roman", serif;
+    background: radial-gradient(circle at 50% 30%, #fff6d8 0%, #ffe3a1 45%, #f7b98b 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    color: #6b3a12; user-select: none; -webkit-user-select: none;
+    padding: max(20px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  }
+  header { text-align: center; }
+  h1 { font-size: clamp(22px, 6.5vw, 34px); font-weight: normal; letter-spacing: .5px; }
+  .hint { margin-top: 6px; font-size: 14px; opacity: .75; font-style: italic; }
+
+  #stage { position: relative; width: min(88vw, 420px); flex: 1; display: flex; align-items: center; justify-content: center; }
+  svg { width: 100%; height: auto; max-height: 62vh; overflow: visible; touch-action: manipulation; cursor: pointer; }
+
+  .petal { transform-box: view-box; transition: filter .2s; }
+  .petal.fall { animation: fall 1.4s ease-in forwards; pointer-events: none; }
+  @keyframes fall {
+    0%   { opacity: 1; }
+    100% { opacity: 0; transform: translate(var(--dx), 260px) rotate(var(--rot)); }
+  }
+  #center { transition: transform .3s; transform-origin: 200px 200px; transform-box: view-box; }
+  #center.pulse { animation: pulse .35s ease; }
+  @keyframes pulse { 50% { transform: scale(1.06); } }
+
+  #msg {
+    min-height: 92px; text-align: center; display: flex; align-items: center; justify-content: center;
+    font-size: clamp(28px, 9vw, 44px); font-weight: bold; padding: 0 8px;
+    position: relative; z-index: 10;
+  }
+  #msg span { display: inline-block; animation: pop .35s ease; }
+  #msg .si { color: #c2185b; }
+  #msg .no { color: #8a6a4a; opacity: .8; }
+  #msg .final { color: #d81b60; font-size: clamp(30px, 9.5vw, 48px); line-height: 1.2; animation: pop .6s ease, glow 1.6s ease-in-out infinite alternate .6s; }
+  @keyframes pop { 0% { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
+  @keyframes glow { to { text-shadow: 0 0 18px rgba(255, 105, 150, .7); } }
+
+  #counter { font-size: 14px; opacity: .7; text-align: center; height: 20px; }
+  #again { display: none; margin: 10px auto 0; border: none; background: #fff3; border: 1.5px solid #c2185b; color: #c2185b;
+    padding: 9px 22px; border-radius: 30px; font-family: inherit; font-size: 15px; }
+
+  .heart { position: fixed; bottom: -40px; pointer-events: none; animation: rise linear forwards; z-index: 1; opacity: .85; }
+  @keyframes rise { to { transform: translateY(-115vh) rotate(var(--r)); opacity: 0.2; } }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Para ti, Valeria 🌻</h1>
+    <p class="hint" id="hint">Toca el girasol para quitarle un pétalo…</p>
+  </header>
+
+  <div id="stage">
+    <svg id="flower" viewBox="0 0 400 520" aria-label="Girasol">
+      <defs>
+        <linearGradient id="petalGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ffd23f"/>
+          <stop offset=".6" stop-color="#ffb703"/>
+          <stop offset="1" stop-color="#f48c06"/>
+        </linearGradient>
+        <radialGradient id="seedGrad" cx=".45" cy=".4" r=".6">
+          <stop offset="0" stop-color="#7a4a1d"/>
+          <stop offset=".7" stop-color="#4a2a0c"/>
+          <stop offset="1" stop-color="#2e1805"/>
+        </radialGradient>
+      </defs>
+      <!-- tallo y hojas -->
+      <path d="M200 260 C 196 360, 206 430, 198 520" stroke="#3f8f3a" stroke-width="12" fill="none" stroke-linecap="round"/>
+      <path d="M201 400 C 250 360, 300 370, 320 390 C 280 420, 240 420, 201 400 Z" fill="#4caf50"/>
+      <path d="M199 450 C 150 410, 100 420, 80 440 C 120 470, 160 470, 199 450 Z" fill="#43a047"/>
+      <g id="petals"></g>
+      <g id="center">
+        <circle cx="200" cy="200" r="62" fill="url(#seedGrad)"/>
+        <g id="seeds"></g>
+      </g>
+    </svg>
+  </div>
+
+  <div>
+    <div id="msg"></div>
+    <div id="counter"></div>
+    <button id="again">Otra vez 🌻</button>
+  </div>
+
+<script>
+  const TOTAL = 21;                       // impar → el último siempre es "Te ama"
+  const FINAL = "Te amo mi vida hermosa! 💕";
+  const NS = "http://www.w3.org/2000/svg";
+  const petalsG = document.getElementById("petals");
+  const seedsG = document.getElementById("seeds");
+  const center = document.getElementById("center");
+  const msg = document.getElementById("msg");
+  const counter = document.getElementById("counter");
+  const hint = document.getElementById("hint");
+  const again = document.getElementById("again");
+  let removed = 0, order = [];
+
+  // semillas en espiral (proporción áurea)
+  for (let i = 0; i < 140; i++) {
+    const a = i * 137.508 * Math.PI / 180, r = 4.6 * Math.sqrt(i);
+    const c = document.createElementNS(NS, "circle");
+    c.setAttribute("cx", 200 + r * Math.cos(a));
+    c.setAttribute("cy", 200 + r * Math.sin(a));
+    c.setAttribute("r", 2.2);
+    c.setAttribute("fill", i % 3 ? "#8b5a2b" : "#c98b3b");
+    seedsG.appendChild(c);
+  }
+
+  function build() {
+    petalsG.innerHTML = "";
+    removed = 0;
+    order = [];
+    for (let i = 0; i < TOTAL; i++) {
+      const ang = (360 / TOTAL) * i;
+      const p = document.createElementNS(NS, "path");
+      p.setAttribute("d", "M200 200 C 178 160, 182 95, 200 70 C 218 95, 222 160, 200 200 Z");
+      p.setAttribute("fill", "url(#petalGrad)");
+      p.setAttribute("stroke", "#e09100");
+      p.setAttribute("stroke-width", "1.2");
+      p.setAttribute("transform", `rotate(${ang} 200 200)`);
+      p.classList.add("petal");
+      p.dataset.ang = ang;
+      p.addEventListener("click", e => { e.stopPropagation(); pluck(p); });
+      petalsG.appendChild(p);
+      order.push(p);
+    }
+    msg.innerHTML = "";
+    counter.textContent = "";
+    hint.textContent = "Toca el girasol para quitarle un pétalo…";
+    again.style.display = "none";
+  }
+
+  function pluck(p) {
+    if (!p || p.classList.contains("fall")) return;
+    removed++;
+    order = order.filter(x => x !== p);
+    const ang = +p.dataset.ang;
+    p.style.setProperty("--dx", (Math.random() * 160 - 80) + "px");
+    p.style.setProperty("--rot", (ang + (Math.random() * 120 - 60)) + "deg");
+    // mantener la rotación original mientras cae
+    p.style.transformOrigin = "200px 200px";
+    p.style.transform = `rotate(${ang}deg)`;
+    requestAnimationFrame(() => p.classList.add("fall"));
+    center.classList.remove("pulse"); void center.getBBox(); center.classList.add("pulse");
+    if (navigator.vibrate) navigator.vibrate(15);
+
+    const left = TOTAL - removed;
+    if (left === 0) {
+      msg.innerHTML = `<span class="final">${FINAL}</span>`;
+      counter.textContent = "";
+      hint.textContent = "Siempre fuiste tú 🌻";
+      celebrate();
+      setTimeout(() => again.style.display = "block", 2500);
+    } else {
+      const loves = removed % 2 === 1;
+      msg.innerHTML = loves ? `<span class="si">Te ama 💛</span>` : `<span class="no">No te ama…</span>`;
+      counter.textContent = `${left} pétalo${left === 1 ? "" : "s"}`;
+      hint.textContent = "Sigue tocando…";
+    }
+  }
+
+  // tocar cualquier parte del girasol quita el siguiente pétalo
+  document.getElementById("flower").addEventListener("click", () => {
+    if (order.length) pluck(order[Math.floor(Math.random() * order.length)]);
+  });
+  again.addEventListener("click", build);
+
+  function celebrate() {
+    const emojis = ["💕", "💖", "❤️", "🌻", "💗", "💘"];
+    let n = 0;
+    const t = setInterval(() => {
+      for (let k = 0; k < 3; k++) {
+        const h = document.createElement("div");
+        h.className = "heart";
+        h.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        h.style.left = Math.random() * 100 + "vw";
+        h.style.fontSize = (18 + Math.random() * 26) + "px";
+        h.style.setProperty("--r", (Math.random() * 120 - 60) + "deg");
+        h.style.animationDuration = (3 + Math.random() * 3) + "s";
+        document.body.appendChild(h);
+        setTimeout(() => h.remove(), 6500);
+      }
+      if (++n > 40) clearInterval(t);
+    }, 150);
+  }
+
+  build();
+</script>
+</body>
+</html>
